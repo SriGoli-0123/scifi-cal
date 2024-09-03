@@ -1,0 +1,55 @@
+:root {
+  --calculator-bg: #fff;
+  --button-bg: #e0e0e0;
+  --button-color: #000;
+  --button-hover-bg: #d0d0d0;
+}
+
+.dark-mode {
+  --calculator-bg: #333;
+  --button-bg: #555;
+  --button-color: #fff;
+  --button-hover-bg: #666;
+}
+
+.light-mode {
+  --calculator-bg: #fff;
+  --button-bg: #e0e0e0;
+  --button-color: #000;
+  --button-hover-bg: #d0d0d0;
+}
+
+body {
+  background-color: var(--calculator-bg);
+  color: var(--button-color);
+  font-family: Arial, sans-serif;
+  transition: background-color 0.5s, color 0.5s;
+}
+
+button {
+  transition: background-color 0.5s, color 0.5s;
+}
+
+.app {
+  text-align: center;
+  padding: 50px;
+}
+
+header {
+  margin-bottom: 20px;
+}
+
+header button {
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  background-color: var(--button-bg);
+  color: var(--button-color);
+  transition: background-color 0.5s, color 0.5s;
+}
+
+header button:hover {
+  background-color: var(--button-hover-bg);
+}
