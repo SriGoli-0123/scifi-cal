@@ -1,44 +1,70 @@
 import React, { useState } from "react";
 import "./Calculator.css";
+import * as math from "mathjs";
 import Fraction from "fraction.js";
 import { getDifferentiation, getIntegration } from "./apiService";
 
-const Calculator = () => {
-  const [display, setDisplay] = useState("");
-  const [history, setHistory] = useState([]);
+const Calculator = ({ addHistoryEntry }) => {
+  const [display, setDisplay] = useState("0");
   const [angleMode, setAngleMode] = useState("DEG");
+  const [clearText, setClearText] = useState("C"); // For handling "C" and "AC"
+  const [result, setResult] = useState(null); // Store the last result
 
-    const convertAngle = (value) => {
+  const convertAngle = (value) => {
     switch (angleMode) {
-        case "DEG":
+      case "DEG":
         return (value * Math.PI) / 180;
-        case "RAD":
+      case "RAD":
         return value;
-        case "GRAD":
+      case "GRAD":
         return (value * Math.PI) / 200;
-        default:
+      default:
         return value;
     }
-    };
-
-    const toggleAngleMode = () => {
-    setAngleMode((prevMode) =>
-        prevMode === "DEG" ? "RAD" : prevMode === "RAD" ? "GRAD" : "DEG"
-    );
-    };
-
-  const handleClick = (value) => {
-    setDisplay(display + value);
   };
 
-  const calculate = () => {
+  const toggleAngleMode = () => {
+    setAngleMode((prevMode) =>
+      prevMode === "DEG" ? "RAD" : prevMode === "RAD" ? "GRAD" : "DEG"
+    );
+  };
+
+  const handleClick = (value) => {
+    if (display === "0" || clearText === "AC") {
+      setDisplay(value);
+      setClearText("C"); // Reset to "C" when a new value is entered
+    } else if (result !== null) {
+      setDisplay(result + value);
+      setResult(null); // Reset result after continuing a calculation
+    } else {
+      setDisplay(display + value);
+    }
+  };
+
+  const handleEqualClick = () => {
     try {
-      const result = eval(display).toString();
-      setDisplay(result);
-      setHistory([...history, { expression: display, result }]);
+      const evalResult = math.evaluate(display);
+      setDisplay(evalResult.toString()); // Show the result inside the display
+      setResult(evalResult.toString()); // Store the result for continued calculations
+      addHistoryEntry(`${display} = ${evalResult}`);
+      setClearText("AC"); // Show "AC" after a result is displayed
     } catch (error) {
       setDisplay("Error");
+      setResult(null);
+      setClearText("AC"); // Show "AC" if there's an error
     }
+  };
+
+  const handleClearClick = () => {
+    if (clearText === "C") {
+      setDisplay("0");
+      setClearText("AC");
+    } else {
+      setDisplay("0");
+      setClearText("C");
+      addHistoryEntry([]); // Clear history when "AC" is clicked
+    }
+    setResult(null); // Clear the stored result
   };
 
   const toggleFraction = () => {
@@ -47,20 +73,18 @@ const Calculator = () => {
       setDisplay(frac.toFraction());
     } catch (error) {
       setDisplay("Error");
+      setResult(null);
+      setClearText("AC");
     }
   };
 
-  const clearDisplay = () => {
-    setDisplay("");
-  };
-
   const scientificFunctions = {
-    sin: Math.sin,
-    cos: Math.cos,
-    tan: Math.tan,
-    asin: Math.asin,
-    acos: Math.acos,
-    atan: Math.atan,
+    sin: (x) => Math.sin(convertAngle(x)),
+    cos: (x) => Math.cos(convertAngle(x)),
+    tan: (x) => Math.tan(convertAngle(x)),
+    asin: (x) => Math.asin(x) * (angleMode === "DEG" ? 180 / Math.PI : angleMode === "GRAD" ? 200 / Math.PI : 1),
+    acos: (x) => Math.acos(x) * (angleMode === "DEG" ? 180 / Math.PI : angleMode === "GRAD" ? 200 / Math.PI : 1),
+    atan: (x) => Math.atan(x) * (angleMode === "DEG" ? 180 / Math.PI : angleMode === "GRAD" ? 200 / Math.PI : 1),
     log: Math.log10,
     ln: Math.log,
     sqrt: Math.sqrt,
@@ -75,40 +99,40 @@ const Calculator = () => {
   const handleScientificFunction = (func) => {
     try {
       const funcResult = scientificFunctions[func](parseFloat(display));
-      setDisplay(funcResult.toString());
-      setHistory([...history, { expression: `${func}(${display})`, result: funcResult.toString() }]);
+      setDisplay(funcResult.toString()); // Show the result inside the display
+      setResult(funcResult.toString()); // Store the result for continued calculations
+      addHistoryEntry(`${func}(${display}) = ${funcResult}`);
+      setClearText("AC"); // Show "AC" after a scientific calculation
     } catch (error) {
       setDisplay("Error");
+      setResult(null);
+      setClearText("AC");
     }
   };
 
   const differentiate = async () => {
-    const diffResult = await getDifferentiation(display, 'x');
+    const diffResult = await getDifferentiation(display, "x");
     setDisplay(diffResult);
-    setHistory([...history, { expression: `d/dx(${display})`, result: diffResult }]);
+    setResult(diffResult); // Store the result for continued calculations
+    addHistoryEntry(`d/dx(${display}) = ${diffResult}`);
+    setClearText("AC"); // Show "AC" after differentiation
   };
 
   const integrate = async () => {
-    const integralResult = await getIntegration(display, 'x');
+    const integralResult = await getIntegration(display, "x");
     setDisplay(integralResult);
-    setHistory([...history, { expression: `∫(${display})dx`, result: integralResult }]);
+    setResult(integralResult); // Store the result for continued calculations
+    addHistoryEntry(`∫(${display})dx = ${integralResult}`);
+    setClearText("AC"); // Show "AC" after integration
   };
 
   return (
     <div className="calculator">
-      <div className="calculator__history">
-        {history.map((item, index) => (
-          <div key={index} className="calculator__history-item">
-            <span>{item.expression} = </span>
-            <strong>{item.result}</strong>
-          </div>
-        ))}
-      </div>
       <input
         type="text"
         className="calculator__display"
         value={display}
-        onChange={(e) => setDisplay(e.target.value)} /* Allow direct typing */
+        onChange={(e) => setDisplay(e.target.value)} // Allow direct typing
         placeholder="Enter expression"
       />
       <div className="calculator__keys">
@@ -125,8 +149,8 @@ const Calculator = () => {
         <button onClick={() => handleClick("3")}>3</button>
         <button onClick={() => handleClick("-")}>-</button>
         <button onClick={() => handleClick("0")}>0</button>
-        <button onClick={clearDisplay}>C</button>
-        <button onClick={calculate}>=</button>
+        <button onClick={handleClearClick}>{clearText}</button>
+        <button onClick={handleEqualClick}>=</button>
         <button onClick={toggleFraction} className="toggle-fraction-button">TF</button>
         <button onClick={toggleAngleMode}>{angleMode}</button>
         <button onClick={() => handleClick("+")}>+</button>
